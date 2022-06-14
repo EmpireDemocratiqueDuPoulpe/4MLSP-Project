@@ -17,29 +17,26 @@ def process_model(model, x_train, y_train, x_test, y_test, verbose=False):
     if verbose:
         print("NOT IMPLEMENTED")
 
-    acc_score, train_score, test_score = get_score(
+    scores = get_score(
         model,
         x_train=x_train, y_train=y_train,
         x_test=x_test, y_test=y_test,
         prediction=prediction
     )
-    return model, {"accuracy": acc_score, "train": train_score, "test": test_score}
+    return model, scores
 
 
 def process_regression_model(model, x_train, y_train, x_test, y_test, verbose=False):
     model.fit(x_train, y_train)
     prediction = model.predict(x_test)
 
-    train_score, test_score, mae, rmse, mape, statistic, pvalue = get_regression_score(
+    scores = get_regression_score(
         model,
         x_train=x_train, y_train=y_train,
         x_test=x_test, y_test=y_test,
         prediction=prediction
     )
-    return model, {
-        "train": train_score, "test": test_score, "mae": mae, "rmse": rmse, "mape": mape,
-        "statistic": statistic, "pvalue": pvalue
-    }
+    return model, scores
 
 
 def get_score(model, x_train, y_train, x_test, y_test, prediction=None):
@@ -50,7 +47,7 @@ def get_score(model, x_train, y_train, x_test, y_test, prediction=None):
     train_score = round(model.score(x_train, y_train) * 100, 2)
     test_score = round(model.score(x_test, y_test) * 100, 2)
 
-    return accuracy_score, train_score, test_score
+    return {"accuracy": accuracy_score, "train": train_score, "test": test_score}
 
 
 def get_regression_score(model, x_train, y_train, x_test, y_test, prediction=None):
@@ -73,7 +70,10 @@ def get_regression_score(model, x_train, y_train, x_test, y_test, prediction=Non
             warnings.filterwarnings("ignore")
             statistic, pvalue = scipy.stats.shapiro(prediction - y_test)
 
-    return train_score, test_score, mae, rmse, mape, statistic, pvalue
+    return {
+        "train": train_score, "test": test_score, "mae": mae, "rmse": rmse, "mape": mape,
+        "statistic": statistic, "pvalue": pvalue
+    }
 
 
 def print_scores(scores):
@@ -100,41 +100,43 @@ def print_scores(scores):
         ))
 
 
-def best_model(orig_model, search, x_train, y_train, x_test, y_test, scores=None):
+def best_model(orig_model, is_regression, search, x_train, y_train, x_test, y_test, scores=None):
     if scores is None:
-        train_score_orig = round(orig_model.score(x_train, y_train) * 100, 2)
-        test_score_orig = round(orig_model.score(x_test, y_test) * 100, 2)
-    else:
-        train_score_orig = scores["train"]
-        test_score_orig = scores["test"]
+        if is_regression:
+            scores = get_regression_score(orig_model, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test)
+        else:
+            scores = get_score(orig_model, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test)
 
     search.fit(x_train, y_train)
     new_model = search.best_estimator_
 
+    if is_regression:
+        new_scores = get_regression_score(new_model, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test)
+    else:
+        new_scores = get_score(new_model, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test)
+
     print(f"Best params found for model: {Fore.LIGHTGREEN_EX}{search.best_params_}")
 
-    new_train_score = round(new_model.score(x_train, y_train) * 100, 2)
-    new_test_score = round(new_model.score(x_test, y_test) * 100, 2)
-    delta_train = round((new_train_score - train_score_orig) / 100, 2)
-    delta_test = round((new_test_score - test_score_orig) / 100, 2)
+    delta_train = round(new_scores["train"] - scores["train"], 2)
+    delta_test = round(new_scores["test"] - scores["test"], 2)
 
     print((
         f"New model score:\n"
-        f"\t{Fore.WHITE}{Style.DIM}∟ train → {new_train_score}% ({delta_to_str(delta_train)}{Fore.WHITE}{Style.DIM})\n"
-        f"\t{Fore.WHITE}{Style.DIM}∟ test → {new_test_score}% ({delta_to_str(delta_test)}{Fore.WHITE}{Style.DIM})"
+        f"\t{Fore.WHITE}{Style.DIM}∟ train → {new_scores['train']}% ({delta_to_str(delta_train)}{Fore.WHITE}{Style.DIM})\n"
+        f"\t{Fore.WHITE}{Style.DIM}∟ test → {new_scores['test']}% ({delta_to_str(delta_test)}{Fore.WHITE}{Style.DIM})"
     ))
 
-    if new_train_score >= train_score_orig and new_test_score >= test_score_orig:
-        return new_model
-    elif new_train_score < train_score_orig and new_test_score < test_score_orig:
-        return orig_model
+    if new_scores["train"] >= scores["train"] and new_scores["test"] >= scores["test"]:
+        return new_model, new_scores
+    elif new_scores["train"] < scores["train"] and new_scores["test"] < scores["test"]:
+        return orig_model, scores
     else:
-        if new_train_score < new_test_score:
-            resolve = {"lower_score": new_train_score, "prev_score": train_score_orig}
+        if new_scores["train"] < new_scores["test"]:
+            resolve = {"lower_score": new_scores['train'], "prev_score": scores['train']}
         else:
-            resolve = {"lower_score": new_test_score, "prev_score": test_score_orig}
+            resolve = {"lower_score": new_scores['test'], "prev_score": scores['test']}
 
-        return new_model if ((resolve["lower_score"] - resolve["prev_score"]) >= 0) else orig_model
+        return (new_model, new_scores) if ((resolve["lower_score"] - resolve["prev_score"]) >= 0) else (orig_model, scores)
 
 
 def delta_to_str(delta):

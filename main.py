@@ -54,7 +54,7 @@ def main():
 
     # Splitting dataset
     utils.print.title("Splitting dataset")
-    model_data = data.drop(["duration"], axis=1)
+    model_data = data.drop(["duration"], axis=1).sample(15000)
     x_train, x_test, y_train, y_test = utils.dataframe.split_train_test(model_data, y_label="y")
     print(f"Train data: {Fore.LIGHTGREEN_EX}{x_train.shape}")
     print(f"Test data: {Fore.LIGHTGREEN_EX}{x_test.shape}")
@@ -67,7 +67,7 @@ def main():
     ])
     categorical_transformer = Pipeline(steps=[
         ("imputer", SimpleImputer(strategy="constant")),
-        ("encoder", OneHotEncoder())
+        ("encoder", OneHotEncoder(handle_unknown="ignore"))
     ])
     # ranking_transformer = Pipeline(steps=[
     #    ("imputer", SimpleImputer(strategy="constant")),
@@ -134,7 +134,7 @@ def main():
             "model": DecisionTreeClassifier(),
             "is_regression": False,
             "hyper_params": {
-                "criterion": ["gini", "entropy", "log_loss"],
+                "criterion": ["gini", "entropy"],
                 "min_samples_split": numpy.arange(2, 3)
             }
         },
@@ -201,10 +201,10 @@ def main():
             grid = GridSearchCV(
                 pipeline,
                 {f"{model_key}__{k}": v for k, v in model_infos["hyper_params"].items()},
-                verbose=1
+                verbose=2
             )
-            utils.model.best_model(
-                model, search=grid,
+            model, scores = utils.model.best_model(
+                model, is_regression=model_infos["is_regression"], search=grid,
                 x_train=x_train, y_train=y_train,
                 x_test=x_test, y_test=y_test,
                 scores=scores
@@ -213,7 +213,6 @@ def main():
         model_end = timer()
         model_elapsed_time = timedelta(seconds=model_end - model_start)
         print(f"\n{Fore.LIGHTBLUE_EX}Finished in {model_elapsed_time}.\n")
-
 
     # Program end
     program_end = timer()
