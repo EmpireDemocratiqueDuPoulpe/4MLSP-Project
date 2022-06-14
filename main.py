@@ -1,5 +1,6 @@
+import sys
 from timeit import default_timer as timer
-from datetime import timedelta
+from datetime import datetime, timedelta
 import colorama
 from colorama import Style, Fore
 import pandas
@@ -15,6 +16,29 @@ from sklearn.pipeline import Pipeline
 from sklearn.svm import LinearSVC, SVC
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 import utils
+
+
+class StdOutCapture(list):
+    def __enter__(self):
+        self._orig_stdout = sys.stdout
+        sys.stdout = ShellClock(self._print)
+
+        return self
+
+    def _print(self, text):
+        self._orig_stdout.write(text)
+
+    def __exit__(self, *args):
+        sys.stdout = self._orig_stdout
+
+
+class ShellClock(object):
+    def __init__(self, stdout_write):
+        self._orig_write = stdout_write
+
+    def write(self, text):
+        if text.strip():
+            self._orig_write(f"{Fore.GREEN}{datetime.now().strftime('%H:%M:%S')} >>>{Fore.RESET} {text}\n")
 
 
 def main():
@@ -162,57 +186,58 @@ def main():
         },
     }
 
-    for model_key in models:
-        # Start model processing
-        model_start = timer()
-        model_infos = models[model_key]
+    with StdOutCapture() as output:
+        for model_key in models:
+            # Start model processing
+            model_start = timer()
+            model_infos = models[model_key]
 
-        # Get model
-        print(f"{Fore.LIGHTBLUE_EX}Processing the dataset with \"{model_key}\" model...")
-        pipeline = Pipeline(steps=[
-            ("preprocessor", preprocessor),
-            (model_key, model_infos["model"])
-        ])
+            # Get model
+            print(f"{Fore.LIGHTBLUE_EX}Processing the dataset with \"{model_key}\" model...")
+            pipeline = Pipeline(steps=[
+                ("preprocessor", preprocessor),
+                (model_key, model_infos["model"])
+            ])
 
-        # TEMPORARY #
-        if model_infos["is_regression"]:
-            continue
-        #############
+            # TEMPORARY #
+            if model_infos["is_regression"]:
+                continue
+            #############
 
-        if model_infos["is_regression"]:
-            model, scores = utils.model.process_regression_model(
-                pipeline,
-                x_train=x_train, y_train=y_train,
-                x_test=x_test, y_test=y_test,
-                verbose=True
-            )
-        else:
-            model, scores = utils.model.process_model(
-                pipeline,
-                x_train=x_train, y_train=y_train,
-                x_test=x_test, y_test=y_test,
-                verbose=True
-            )
+            if model_infos["is_regression"]:
+                model, scores = utils.model.process_regression_model(
+                    pipeline,
+                    x_train=x_train, y_train=y_train,
+                    x_test=x_test, y_test=y_test,
+                    verbose=True
+                )
+            else:
+                model, scores = utils.model.process_model(
+                    pipeline,
+                    x_train=x_train, y_train=y_train,
+                    x_test=x_test, y_test=y_test,
+                    verbose=True
+                )
 
-        utils.model.print_scores(scores)
+            utils.model.print_scores(scores)
 
-        if model_infos["hyper_params"] is not None:
-            print(f"Finding the best params using Grid Search CV")
-            grid = GridSearchCV(
-                pipeline,
-                {f"{model_key}__{k}": v for k, v in model_infos["hyper_params"].items()},
-                verbose=2
-            )
-            model, scores = utils.model.best_model(
-                model, is_regression=model_infos["is_regression"], search=grid,
-                x_train=x_train, y_train=y_train,
-                x_test=x_test, y_test=y_test,
-                scores=scores
-            )
+            if model_infos["hyper_params"] is not None:
+                print(f"Finding the best params using Grid Search CV")
+                grid = GridSearchCV(
+                    pipeline,
+                    {f"{model_key}__{k}": v for k, v in model_infos["hyper_params"].items()},
+                    verbose=2
+                )
+                model, scores = utils.model.best_model(
+                    model, is_regression=model_infos["is_regression"], search=grid,
+                    x_train=x_train, y_train=y_train,
+                    x_test=x_test, y_test=y_test,
+                    scores=scores
+                )
 
-        model_end = timer()
-        model_elapsed_time = timedelta(seconds=model_end - model_start)
-        print(f"\n{Fore.LIGHTBLUE_EX}Finished in {model_elapsed_time}.\n")
+            model_end = timer()
+            model_elapsed_time = timedelta(seconds=model_end - model_start)
+            print(f"\n{Fore.LIGHTBLUE_EX}Finished in {model_elapsed_time}.\n")
 
     # Program end
     program_end = timer()
