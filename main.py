@@ -54,7 +54,7 @@ def main():
 
     # Splitting dataset
     utils.print.title("Splitting dataset")
-    model_data = data.drop(["duration"], axis=1).sample(15000)
+    model_data = data.drop(["duration"], axis=1)
     x_train, x_test, y_train, y_test = utils.dataframe.split_train_test(model_data, y_label="y")
     print(f"Train data: {Fore.LIGHTGREEN_EX}{x_train.shape}")
     print(f"Test data: {Fore.LIGHTGREEN_EX}{x_test.shape}")
