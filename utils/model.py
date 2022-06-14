@@ -8,6 +8,7 @@ import numpy
 import sklearn
 import scipy.stats
 import warnings
+from . import metrics
 
 
 def process_model(model, x_train, y_train, x_test, y_test, verbose=False):
@@ -15,7 +16,9 @@ def process_model(model, x_train, y_train, x_test, y_test, verbose=False):
     prediction = model.predict(x_test)
 
     if verbose:
-        print("NOT IMPLEMENTED")
+        model_name = list(model.named_steps.keys())[-1]
+        metrics.roc_curve(model, x_test=x_test, y_test=y_test, name=model_name, prediction=prediction)
+        metrics.precision_recall_curve(model, x_test=x_test, y_test=y_test, name=model_name, prediction=prediction)
 
     scores = get_score(
         model,

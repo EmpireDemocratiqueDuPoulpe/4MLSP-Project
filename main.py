@@ -80,9 +80,13 @@ def main():
     utils.print.title("Valeurs manquantes")
     utils.dataframe.missing_values(data, keep_zeros=False)
 
+    # Transform y to binary
+    utils.print.title("Transformation de la colonne y en binaire")
+    data["y"] = data["y"].apply(lambda value: 1 if value == "yes" else 0)
+
     # Splitting dataset
     utils.print.title("Séparation du jeu de données")
-    model_data = data.drop(["duration"], axis=1).sample(1000)
+    model_data = data.drop(["duration"], axis=1)
     x_train, x_test, y_train, y_test = utils.dataframe.split_train_test(model_data, y_label="y")
     print(f"Données d'entraînement : {Fore.LIGHTGREEN_EX}{x_train.shape}")
     print(f"Données de test : {Fore.LIGHTGREEN_EX}{x_test.shape}")
