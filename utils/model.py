@@ -66,7 +66,7 @@ def get_regression_score(model, x_train, y_train, x_test, y_test, prediction=Non
         try:
             statistic, pvalue = scipy.stats.shapiro(prediction - y_test)
         except UserWarning as warn:
-            print(f"{Fore.YELLOW}Warning: {warn}")
+            print(f"{Fore.YELLOW}Attention: {warn}")
             warnings.filterwarnings("ignore")
             statistic, pvalue = scipy.stats.shapiro(prediction - y_test)
 
@@ -79,23 +79,23 @@ def get_regression_score(model, x_train, y_train, x_test, y_test, prediction=Non
 def print_scores(scores):
     if all(key in scores for key in ["mae", "rmse", "mape", "pvalue", "statistic"]):
         print((
-            f"Best achieved accuracy:"
-            f" (train: {Fore.LIGHTGREEN_EX}{scores['train']}%{Fore.RESET}"
+            f"Précision du modèle :"
+            f" (entraînement: {Fore.LIGHTGREEN_EX}{scores['train']}%{Fore.RESET}"
             f", test: {Fore.LIGHTGREEN_EX}{scores['test']}%{Fore.RESET})\n"
 
-            f"Regression model scores:"
-            f" (MAE: {Fore.LIGHTGREEN_EX}{scores['mae']}{Fore.RESET}"
-            f", RMSE: {Fore.LIGHTGREEN_EX}{scores['rmse']}{Fore.RESET}"
-            f", MAPE: {Fore.LIGHTGREEN_EX}{scores['mape']}%{Fore.RESET})\n"
+            f"Score du modèle de régression :"
+            f" (MAE : {Fore.LIGHTGREEN_EX}{scores['mae']}{Fore.RESET}"
+            f", RMSE : {Fore.LIGHTGREEN_EX}{scores['rmse']}{Fore.RESET}"
+            f", MAPE : {Fore.LIGHTGREEN_EX}{scores['mape']}%{Fore.RESET})\n"
 
-            f"Normality test:"
-            f" (pvalue: {Fore.LIGHTGREEN_EX}{round(scores['pvalue'], 1)}{Fore.RESET}"
-            f", statistic: {Fore.LIGHTGREEN_EX}{round(scores['statistic'], 3)}{Fore.RESET})"
+            f"Test de normalité :"
+            f" (pvalue : {Fore.LIGHTGREEN_EX}{round(scores['pvalue'], 1)}{Fore.RESET}"
+            f", statistic : {Fore.LIGHTGREEN_EX}{round(scores['statistic'], 3)}{Fore.RESET})"
         ))
     else:
         print((
-            f"Best achieved accuracy: {Fore.LIGHTGREEN_EX}{scores['accuracy']}"
-            f"{Fore.WHITE}{Style.DIM} (train: {scores['train']}%"
+            f"Précision du modèle : {Fore.LIGHTGREEN_EX}{scores['accuracy']}"
+            f"{Fore.WHITE}{Style.DIM} (entraînement: {scores['train']}%"
             f", test: {scores['test']}%){Style.RESET_ALL}"
         ))
 
@@ -115,14 +115,14 @@ def best_model(orig_model, is_regression, search, x_train, y_train, x_test, y_te
     else:
         new_scores = get_score(new_model, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test)
 
-    print(f"Best params found for model: {Fore.LIGHTGREEN_EX}{search.best_params_}")
+    print(f"Meilleurs paramètres trouvés pour le modèle : {Fore.LIGHTGREEN_EX}{search.best_params_}")
 
     delta_train = round(new_scores["train"] - scores["train"], 2)
     delta_test = round(new_scores["test"] - scores["test"], 2)
 
     print((
-        f"New model score:\n"
-        f"\t{Fore.WHITE}{Style.DIM}∟ train → {new_scores['train']}% ({delta_to_str(delta_train)}{Fore.WHITE}{Style.DIM})\n"
+        f"Scores du nouveau modèle:\n"
+        f"\t{Fore.WHITE}{Style.DIM}∟ entraînement → {new_scores['train']}% ({delta_to_str(delta_train)}{Fore.WHITE}{Style.DIM})\n"
         f"\t{Fore.WHITE}{Style.DIM}∟ test → {new_scores['test']}% ({delta_to_str(delta_test)}{Fore.WHITE}{Style.DIM})"
     ))
 

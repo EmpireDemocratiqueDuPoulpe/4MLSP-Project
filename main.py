@@ -38,6 +38,10 @@ class ShellClock(object):
 
     def write(self, text):
         if text.strip():
+            if text.startswith("\n"):
+                self._orig_write("\n")
+                text = text.lstrip("\n")
+
             self._orig_write(f"{Fore.GREEN}{datetime.now().strftime('%H:%M:%S')} >>>{Fore.RESET} {text}\n")
 
 
@@ -69,22 +73,22 @@ def main():
     })
 
     # First look
-    utils.print.title("First look")
+    utils.print.title("Premier aperçu")
     utils.dataframe.first_look(data)
 
     # Missing values
-    utils.print.title("Missing values")
+    utils.print.title("Valeurs manquantes")
     utils.dataframe.missing_values(data, keep_zeros=False)
 
     # Splitting dataset
-    utils.print.title("Splitting dataset")
+    utils.print.title("Séparation du jeu de données")
     model_data = data.drop(["duration"], axis=1)
     x_train, x_test, y_train, y_test = utils.dataframe.split_train_test(model_data, y_label="y")
-    print(f"Train data: {Fore.LIGHTGREEN_EX}{x_train.shape}")
-    print(f"Test data: {Fore.LIGHTGREEN_EX}{x_test.shape}")
+    print(f"Données d'entraînement : {Fore.LIGHTGREEN_EX}{x_train.shape}")
+    print(f"Données de test : {Fore.LIGHTGREEN_EX}{x_test.shape}")
 
     # Transform numeric and categorical values
-    utils.print.title("Transform numeric and categorical values")
+    utils.print.title("Transforme les valeurs quantitative et qualitative.")
     numeric_transformer = Pipeline(steps=[
         ("imputer", SimpleImputer(strategy="mean")),
         ("scaler", StandardScaler())
@@ -116,7 +120,7 @@ def main():
     )
 
     # Get models
-    utils.print.title("Get best model")
+    utils.print.title("Recherche du meilleur modèle")
     models = {
         "k_neighbors_classifier": {
             "model": KNeighborsClassifier(),
@@ -186,6 +190,8 @@ def main():
         },
     }
 
+    models_ranking = []
+
     with StdOutCapture() as output:
         for model_key in models:
             # Start model processing
@@ -193,7 +199,7 @@ def main():
             model_infos = models[model_key]
 
             # Get model
-            print(f"{Fore.LIGHTBLUE_EX}Processing the dataset with \"{model_key}\" model...")
+            print(f"{Fore.LIGHTBLUE_EX}Traitement du jeu de données avec un modèle \"{model_key}\"...")
             pipeline = Pipeline(steps=[
                 ("preprocessor", preprocessor),
                 (model_key, model_infos["model"])
@@ -204,6 +210,7 @@ def main():
                 continue
             #############
 
+            # Process
             if model_infos["is_regression"]:
                 model, scores = utils.model.process_regression_model(
                     pipeline,
@@ -221,8 +228,9 @@ def main():
 
             utils.model.print_scores(scores)
 
+            # Try to find better params, if possible
             if model_infos["hyper_params"] is not None:
-                print(f"Finding the best params using Grid Search CV")
+                print(f"Recherche des meilleurs paramètres avec GridSearch...")
                 grid = GridSearchCV(
                     pipeline,
                     {f"{model_key}__{k}": v for k, v in model_infos["hyper_params"].items()},
@@ -235,14 +243,33 @@ def main():
                     scores=scores
                 )
 
+            # Send the best model into the ranking array
+            scores_mean = round((scores["train"] + scores["test"]) / 2, 2)
             model_end = timer()
             model_elapsed_time = timedelta(seconds=model_end - model_start)
-            print(f"\n{Fore.LIGHTBLUE_EX}Finished in {model_elapsed_time}.\n")
+
+            models_ranking.append({
+                "name": model_key, "mean": scores_mean, "model": model, "processing_time": model_elapsed_time
+            })
+
+            # Prints the duration of the model computation
+            print(f"{Fore.LIGHTBLUE_EX}Terminé en {model_elapsed_time}.\n")
+
+    # Suggests a model from means
+    models_ranking.sort(key=lambda dic: dic["mean"], reverse=True)
+    best_model = models_ranking[0]
+
+    print((
+        f"{Fore.GREEN}Selon les scores d'entraînement et de test uniquement"
+        f", le meilleur modèle semble être \"{best_model['name']}\".\n"
+        f"Il a atteint un score moyen de {best_model['mean']}% en {best_model['processing_time']}.\n"
+        f"{Fore.RESET}Pensez à vérifier les autres statistiques avant de sélectionner un modèle."
+    ))
 
     # Program end
     program_end = timer()
     program_elapsed_time = timedelta(seconds=program_end - program_start)
-    print(f"\n{Fore.GREEN}Successful processing of \"MP.csv\" in {program_elapsed_time}.")
+    print(f"\n{Fore.GREEN}Recherche du meilleur modèle terminée en {program_elapsed_time}.")
 
 
 if __name__ == "__main__":
