@@ -82,7 +82,7 @@ def main():
 
     # Splitting dataset
     utils.print.title("Séparation du jeu de données")
-    model_data = data.drop(["duration"], axis=1)
+    model_data = data.drop(["duration"], axis=1).sample(1000)
     x_train, x_test, y_train, y_test = utils.dataframe.split_train_test(model_data, y_label="y")
     print(f"Données d'entraînement : {Fore.LIGHTGREEN_EX}{x_train.shape}")
     print(f"Données de test : {Fore.LIGHTGREEN_EX}{x_test.shape}")
@@ -205,10 +205,11 @@ def main():
                 (model_key, model_infos["model"])
             ])
 
-            # TEMPORARY #
+            # Models based on regression are not working due to some operations between strings and numbers,
+            # even with the preprocessor. sad story.
             if model_infos["is_regression"]:
+                print(f"{Fore.YELLOW}Le modèle est ignoré dû à un bug avec les modèles régressifs. déso bro.")
                 continue
-            #############
 
             # Process
             if model_infos["is_regression"]:
